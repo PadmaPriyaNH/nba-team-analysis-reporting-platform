@@ -1,0 +1,46 @@
+services:
+  - type: web
+    name: nba-team-analysis-reporting-platform
+    env: docker
+    autoDeploy: true
+    plan: free
+    healthCheckPath: /healthz
+    # Dockerfile in repo root is used automatically
+    envVars:
+      - key: FLASK_SECRET_KEY
+        generateValue: true
+      - key: LOG_LEVEL
+        value: INFO
+      - key: NBA_API_TIMEOUT
+        value: "90"
+      - key: NBA_API_RETRIES
+        value: "5"
+      - key: NBA_API_BACKOFF_BASE
+        value: "2.5"
+      - key: NBA_API_USE_CACHE_ON_FAILURE
+        value: "1"
+      - key: DATA_DIR
+        value: /data
+      - key: PLOTS_DIR
+        value: /data/plots
+      - key: REPORTS_DIR
+        value: /data/reports
+      - key: GUNICORN_WORKERS
+        value: "2"
+      - key: GUNICORN_THREADS
+        value: "4"
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      # Optional warm cache on startup (comma-separated team abbreviations via WARM_TEAM_ABBRS)
+      - key: WARM_CACHE_ON_START
+        value: "0"
+      - key: WARM_TEAM_ABBRS
+        value: "GSW"
+      # Optional remote cache base URL to serve cached CSVs if NBA API is down
+      # e.g., https://raw.githubusercontent.com/PadmaPriyaNH/nba-team-analysis-reporting-platform/main/data
+      # - key: NBA_API_REMOTE_CACHE_BASEURL
+      #   value: ""
+    disks:
+      - name: data
+        mountPath: /data
+        sizeGB: 1

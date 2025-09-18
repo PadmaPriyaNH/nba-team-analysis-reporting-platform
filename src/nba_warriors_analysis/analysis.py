@@ -4,8 +4,10 @@ import os
 from dataclasses import dataclass
 from typing import Dict, Tuple, Optional
 import time
+from io import StringIO
 
 import pandas as pd
+import requests
 from nba_api.stats.static import teams
 from nba_api.stats.endpoints import leaguegamefinder
 
@@ -38,21 +40,40 @@ def find_team_context(choice_index: int) -> TeamContext:
 
 def fetch_games(
     team_id: int,
-    retries: int = int(os.getenv("NBA_API_RETRIES", "3")),
-    backoff_base: float = float(os.getenv("NBA_API_BACKOFF_BASE", "2.0")),
-    timeout: int = int(os.getenv("NBA_API_TIMEOUT", "60")),
+    retries: int = int(os.getenv("NBA_API_RETRIES", "5")),
+    backoff_base: float = float(os.getenv("NBA_API_BACKOFF_BASE", "2.5")),
+    timeout: int = int(os.getenv("NBA_API_TIMEOUT", "90")),
     cache_dir: Optional[str] = os.getenv("NBA_API_CACHE_DIR", "data"),
     use_cache_on_failure: bool = os.getenv("NBA_API_USE_CACHE_ON_FAILURE", "1") == "1",
 ) -> pd.DataFrame:
     """
     Fetch games for a team with retry/backoff and longer timeout to reduce transient failures.
-    Optionally cache results to CSV and read from cache on failure.
+    Caches results to CSV and reads from cache on failure. Also supports an optional remote fallback.
+
+    Optional env vars:
+      - NBA_API_RETRIES (int)
+      - NBA_API_BACKOFF_BASE (float)
+      - NBA_API_TIMEOUT (int seconds)
+      - NBA_API_CACHE_DIR (str)
+      - NBA_API_USE_CACHE_ON_FAILURE (1/0)
+      - NBA_API_REMOTE_CACHE_BASEURL (HTTP(S) base URL to fetch cached CSV if upstream down)
     """
     last_exc: Exception | None = None
-    cache_path: Optional[str] = None
+
+    # Determine abbreviation for better cache naming and remote fallback
+    try:
+        team_meta = next(t for t in teams.get_teams() if t.get("id") == team_id)
+        team_abbr = team_meta.get("abbreviation")
+    except StopIteration:
+        team_abbr = None
+
+    cache_path_id: Optional[str] = None
+    cache_path_abbr: Optional[str] = None
     if cache_dir:
         os.makedirs(cache_dir, exist_ok=True)
-        cache_path = os.path.join(cache_dir, f"games_{team_id}.csv")
+        cache_path_id = os.path.join(cache_dir, f"games_{team_id}.csv")
+        if team_abbr:
+            cache_path_abbr = os.path.join(cache_dir, f"{team_abbr}_games.csv")
 
     for attempt in range(1, retries + 1):
         try:
@@ -61,12 +82,13 @@ def fetch_games(
             df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])  # type: ignore
             df = df.sort_values("GAME_DATE")
 
-            # Cache successful fetch
-            if cache_path is not None:
-                try:
-                    df.to_csv(cache_path, index=False)
-                except Exception as cache_err:
-                    logger.debug("Failed to write cache %s: %s", cache_path, cache_err)
+            # Cache successful fetch to both id and abbr paths
+            for cpath in (cache_path_abbr, cache_path_id):
+                if cpath:
+                    try:
+                        df.to_csv(cpath, index=False)
+                    except Exception as cache_err:
+                        logger.debug("Failed to write cache %s: %s", cpath, cache_err)
 
             return df
         except Exception as e:
@@ -81,12 +103,40 @@ def fetch_games(
             else:
                 logger.error("fetch_games failed after %s attempts: %s", retries, e)
 
-    # Fallback to cache if present
-    if use_cache_on_failure and cache_path and os.path.isfile(cache_path):
-        try:
-            return pd.read_csv(cache_path)
-        except Exception as cache_read_err:
-            logger.debug("Failed to read cache %s: %s", cache_path, cache_read_err)
+    # Local cache fallback: prefer abbr-named, then id-named
+    if use_cache_on_failure:
+        for cpath in (cache_path_abbr, cache_path_id):
+            if cpath and os.path.isfile(cpath):
+                try:
+                    logger.warning("Using local cached data at %s due to upstream failure.", cpath)
+                    return pd.read_csv(cpath)
+                except Exception as cache_read_err:
+                    logger.debug("Failed to read cache %s: %s", cpath, cache_read_err)
+
+    # Remote cache fallback
+    baseurl = os.getenv("NBA_API_REMOTE_CACHE_BASEURL")
+    if baseurl:
+        baseurl = baseurl.rstrip("/")
+        candidates = []
+        if team_abbr:
+            candidates.append(f"{baseurl}/{team_abbr}_games.csv")
+        candidates.append(f"{baseurl}/games_{team_id}.csv")
+        for url in candidates:
+            try:
+                resp = requests.get(url, timeout=15)
+                if resp.status_code == 200 and resp.text:
+                    logger.warning("Using remote cached data from %s due to upstream failure.", url)
+                    df = pd.read_csv(StringIO(resp.text))
+                    # Save to local cache for next time
+                    for cpath in (cache_path_abbr, cache_path_id):
+                        if cpath:
+                            try:
+                                df.to_csv(cpath, index=False)
+                            except Exception:
+                                pass
+                    return df
+            except Exception as re:
+                logger.debug("Remote cache fetch failed %s: %s", url, re)
 
     assert last_exc is not None
     raise last_exc

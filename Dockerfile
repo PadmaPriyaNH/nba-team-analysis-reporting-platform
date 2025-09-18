@@ -14,6 +14,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml /app/
 COPY src /app/src
 COPY requirements.txt /app/requirements.txt
+# Bundle seed data (CSV caches) into the image to survive empty disks
+COPY data /app/data_seed
 
 # Install deps
 RUN pip install --no-cache-dir -r /app/requirements.txt && \
