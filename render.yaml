@@ -9,12 +9,6 @@ services:
         generateValue: true
       - key: LOG_LEVEL
         value: INFO
-      - key: DATA_DIR
-        value: /data
-      - key: PLOTS_DIR
-        value: /data/plots
-      - key: REPORTS_DIR
-        value: /data/reports
       - key: NBA_API_TIMEOUT
         value: "90"
       - key: NBA_API_RETRIES
@@ -23,17 +17,13 @@ services:
         value: "2.5"
       - key: NBA_API_USE_CACHE_ON_FAILURE
         value: "1"
+      - key: WARM_CACHE_ON_START
+        value: "0"
+      - key: WARM_TEAM_ABBRS
+        value: "GSW"
       - key: GUNICORN_WORKERS
         value: "2"
       - key: GUNICORN_THREADS
         value: "4"
       - key: GUNICORN_TIMEOUT
         value: "120"
-      - key: WARM_CACHE_ON_START
-        value: "0"
-      - key: WARM_TEAM_ABBRS
-        value: "GSW"
-    disks:
-      - name: data
-        mountPath: /data
-        sizeGB: 1
