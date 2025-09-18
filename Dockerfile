@@ -23,6 +23,8 @@ RUN pip install --no-cache-dir -r /app/requirements.txt && \
 RUN mkdir -p /app/data /app/plots /app/reports
 
 ENV PYTHONUNBUFFERED=1
+ENV PORT=8000
 
-# Default command runs CLI in non-interactive mode using env LAST_TEAM_ABBR
-CMD ["python", "-m", "nba_warriors_analysis.cli", "--non-interactive"]
+# Start the web app with Gunicorn (Render ignores Procfile for Docker services)
+EXPOSE 8000
+CMD gunicorn "nba_warriors_analysis.webapp:create_app()" -b 0.0.0.0:${PORT} --worker-tmp-dir /dev/shm --workers ${GUNICORN_WORKERS:-2} --threads ${GUNICORN_THREADS:-4} --timeout ${GUNICORN_TIMEOUT:-120}

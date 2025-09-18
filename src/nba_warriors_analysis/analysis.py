@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
+import time
 
 import pandas as pd
 from nba_api.stats.static import teams
@@ -35,12 +36,60 @@ def find_team_context(choice_index: int) -> TeamContext:
     )
 
 
-def fetch_games(team_id: int) -> pd.DataFrame:
-    finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=team_id)
-    df = finder.get_data_frames()[0]
-    df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])  # type: ignore
-    df = df.sort_values("GAME_DATE")
-    return df
+def fetch_games(
+    team_id: int,
+    retries: int = int(os.getenv("NBA_API_RETRIES", "3")),
+    backoff_base: float = float(os.getenv("NBA_API_BACKOFF_BASE", "2.0")),
+    timeout: int = int(os.getenv("NBA_API_TIMEOUT", "60")),
+    cache_dir: Optional[str] = os.getenv("NBA_API_CACHE_DIR", "data"),
+    use_cache_on_failure: bool = os.getenv("NBA_API_USE_CACHE_ON_FAILURE", "1") == "1",
+) -> pd.DataFrame:
+    """
+    Fetch games for a team with retry/backoff and longer timeout to reduce transient failures.
+    Optionally cache results to CSV and read from cache on failure.
+    """
+    last_exc: Exception | None = None
+    cache_path: Optional[str] = None
+    if cache_dir:
+        os.makedirs(cache_dir, exist_ok=True)
+        cache_path = os.path.join(cache_dir, f"games_{team_id}.csv")
+
+    for attempt in range(1, retries + 1):
+        try:
+            finder = leaguegamefinder.LeagueGameFinder(team_id_nullable=team_id, timeout=timeout)
+            df = finder.get_data_frames()[0]
+            df["GAME_DATE"] = pd.to_datetime(df["GAME_DATE"])  # type: ignore
+            df = df.sort_values("GAME_DATE")
+
+            # Cache successful fetch
+            if cache_path is not None:
+                try:
+                    df.to_csv(cache_path, index=False)
+                except Exception as cache_err:
+                    logger.debug("Failed to write cache %s: %s", cache_path, cache_err)
+
+            return df
+        except Exception as e:
+            last_exc = e
+            if attempt < retries:
+                wait = backoff_base ** (attempt - 1)
+                logger.warning(
+                    "fetch_games attempt %s/%s failed (timeout=%ss): %s; retrying in %.1fs",
+                    attempt, retries, timeout, e, wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error("fetch_games failed after %s attempts: %s", retries, e)
+
+    # Fallback to cache if present
+    if use_cache_on_failure and cache_path and os.path.isfile(cache_path):
+        try:
+            return pd.read_csv(cache_path)
+        except Exception as cache_read_err:
+            logger.debug("Failed to read cache %s: %s", cache_path, cache_read_err)
+
+    assert last_exc is not None
+    raise last_exc
 
 
 def compute_summary(df: pd.DataFrame) -> Dict[str, float]:
