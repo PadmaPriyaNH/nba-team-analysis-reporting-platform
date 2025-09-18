@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NBA Team Analysis</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">🏀</div>
+      <div>
+        <h1>NBA Team Analysis</h1>
+        <p class="subtitle">Fetch data, generate charts & PDF, and send email — all in one click.</p>
+      </div>
+    </div>
+
+    <div class="messages">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="alert {{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+    </div>
+
+    <div class="card">
+      <form method="post" action="{{ url_for('run') }}">
+        <div class="grid">
+          <div>
+            <label for="team_abbr">Select Team</label>
+            <select id="team_abbr" name="team_abbr" required>
+              <option value="">— Choose a team —</option>
+              {% for t in teams %}
+                <option value="{{ t['abbreviation'] }}">{{ t['full_name'] }} ({{ t['abbreviation'] }})</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label>Options</label>
+            <label class="checkbox">
+              <input type="checkbox" name="send_email" /> Send email after generating report
+            </label>
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="btn" type="submit">Run Analysis</button>
+          <span class="note">Outputs will be saved to <b>data/</b>, <b>plots/</b>, and <b>reports/</b>.</span>
+        </div>
+      </form>
+    </div>
+
+    <footer>
+      <div>Made with ❤️ by N H Padma Priya</div>
+      <div class="note">Tip: Configure email in your .env (EMAIL_USER, EMAIL_PASS, EMAIL_RECIPIENTS) for sending reports.</div>
+    </footer>
+  </div>
+</body>
+</html>

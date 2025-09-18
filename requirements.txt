@@ -1,0 +1,12 @@
+yagmail
+python-dotenv
+pandas
+matplotlib
+requests
+nba_api
+seaborn
+numpy
+fpdf2
+schedule
+flask
+gunicorn

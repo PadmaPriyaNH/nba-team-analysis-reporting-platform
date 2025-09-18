@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=65", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nba-warriors-analysis"
+version = "0.1.0"
+description = "Automated NBA team analysis: data fetch, visualization, PDF report, and email delivery"
+authors = [{ name = "N H Padma Priya" }]
+maintainers = [{ name = "N H Padma Priya" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = [
+  "python-dotenv",
+  "pandas",
+  "matplotlib",
+  "requests",
+  "nba_api",
+  "seaborn",
+  "numpy",
+  "fpdf2",
+  "yagmail",
+]
+
+[project.scripts]
+nba-analysis = "nba_warriors_analysis.cli:main"
+
+[tool.black]
+line-length = 100
+target-version = ['py310']
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 100
+extend-ignore = ["E203", "W503"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,1 @@
+web: gunicorn "nba_warriors_analysis.webapp:create_app()" -b 0.0.0.0:${PORT} --worker-tmp-dir /dev/shm --workers 2 --threads 4 --timeout 120

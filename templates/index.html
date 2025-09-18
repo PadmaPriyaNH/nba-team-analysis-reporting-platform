@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NBA Analysis</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="header">
+    <div class="container">
+      <div class="brand">NBA Team Analysis</div>
+    </div>
+  </header>
+
+  <main>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <ul class="alert-list">
+        {% for category, message in messages %}
+          <li class="alert {{ category }}"><strong>{{ category|capitalize }}:</strong> {{ message }}</li>
+        {% endfor %}
+        </ul>
+      {% endif %}
+    {% endwith %}
+
+    <section class="card">
+      <h3>Run Analysis</h3>
+      <form method="post" action="{{ url_for('run') }}">
+        <label for="team_abbr">Select Team</label>
+        <select id="team_abbr" name="team_abbr" required>
+          <option value="">-- Choose a team --</option>
+          {% for t in teams %}
+            <option value="{{ t['abbreviation'] }}">{{ t['full_name'] }} ({{ t['abbreviation'] }})</option>
+          {% endfor %}
+        </select>
+
+        <label>
+          <input type="checkbox" name="send_email" /> Send email after generating report
+        </label>
+
+        <button type="submit">Run Analysis</button>
+      </form>
+    </section>
+
+    <section class="section card">
+      <h3>Output locations</h3>
+      <ul>
+        <li>Data: data/</li>
+        <li>Plots: plots/</li>
+        <li>Reports: reports/</li>
+      </ul>
+    </section>
+
+    <footer>
+      <div>Made with ❤️ by N H Padma Priya</div>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,19 @@
+version: "3.9"
+services:
+  nba-analysis:
+    build: .
+    labels:
+      - "org.opencontainers.image.authors=N H Padma Priya"
+    env_file:
+      - .env
+    environment:
+      - LAST_TEAM_ABBR=${LAST_TEAM_ABBR:-GSW}
+      - LAST_TEAM_NAME=${LAST_TEAM_NAME:-Golden State Warriors}
+      - DATA_DIR=/data
+      - PLOTS_DIR=/plots
+      - REPORTS_DIR=/reports
+    volumes:
+      - ./data:/data
+      - ./plots:/plots
+      - ./reports:/reports
+    command: ["python", "-m", "nba_warriors_analysis.cli", "--non-interactive"]

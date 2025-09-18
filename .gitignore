@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+.eggs/
+*.pytest_cache/
+.pytest_cache/
+
+# Environments
+.venv/
+.env
+
+# IDEs
+.idea/
+.vscode/
+
+# Data/outputs
+/data/
+/plots/
+/reports/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Qodo
+.qodo/
