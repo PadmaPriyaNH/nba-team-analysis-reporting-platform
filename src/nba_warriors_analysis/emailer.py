@@ -26,7 +26,7 @@ def send_summary_email(settings: Settings, team_abbr: str, team_name: str) -> No
     summary_csv = os.path.join(settings.data_dir, f"{team_abbr}_summary.csv")
     if not os.path.exists(summary_csv):
         logger.error("Summary CSV not found: %s", summary_csv)
-        raise SystemExit(1)
+        raise FileNotFoundError(summary_csv)
 
     summary = pd.read_csv(summary_csv, index_col=0).squeeze("columns")
 
@@ -51,10 +51,10 @@ def send_summary_email(settings: Settings, team_abbr: str, team_name: str) -> No
 
     if not sender or not app_pass:
         logger.error("Missing EMAIL_USER or EMAIL_PASS; cannot send email.")
-        raise SystemExit(1)
+        raise RuntimeError("Email credentials missing")
     if not recipients:
         logger.error("No recipients configured. Set EMAIL_RECEIVER or EMAIL_RECIPIENTS in .env.")
-        raise SystemExit(1)
+        raise RuntimeError("No email recipients configured")
 
     attachments = _gather_attachments(team_abbr, settings)
     if not attachments:

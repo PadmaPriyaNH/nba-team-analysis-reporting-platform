@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple, Optional, List
 import time
 from io import StringIO
 
@@ -21,11 +21,58 @@ class TeamContext:
     name: str
     nickname: str
 
+# Fallback team list to ensure UI and offline operation when nba_api is blocked
+# (e.g., on certain cloud providers). Set FORCE_OFFLINE_TEAMS=1 to always use this.
+TEAMS_FALLBACK: List[Dict[str, str | int]] = [
+    {"id": 1610612737, "full_name": "Atlanta Hawks", "abbreviation": "ATL", "nickname": "Hawks"},
+    {"id": 1610612738, "full_name": "Boston Celtics", "abbreviation": "BOS", "nickname": "Celtics"},
+    {"id": 1610612751, "full_name": "Brooklyn Nets", "abbreviation": "BKN", "nickname": "Nets"},
+    {"id": 1610612766, "full_name": "Charlotte Hornets", "abbreviation": "CHA", "nickname": "Hornets"},
+    {"id": 1610612741, "full_name": "Chicago Bulls", "abbreviation": "CHI", "nickname": "Bulls"},
+    {"id": 1610612739, "full_name": "Cleveland Cavaliers", "abbreviation": "CLE", "nickname": "Cavaliers"},
+    {"id": 1610612742, "full_name": "Dallas Mavericks", "abbreviation": "DAL", "nickname": "Mavericks"},
+    {"id": 1610612743, "full_name": "Denver Nuggets", "abbreviation": "DEN", "nickname": "Nuggets"},
+    {"id": 1610612765, "full_name": "Detroit Pistons", "abbreviation": "DET", "nickname": "Pistons"},
+    {"id": 1610612744, "full_name": "Golden State Warriors", "abbreviation": "GSW", "nickname": "Warriors"},
+    {"id": 1610612745, "full_name": "Houston Rockets", "abbreviation": "HOU", "nickname": "Rockets"},
+    {"id": 1610612754, "full_name": "Indiana Pacers", "abbreviation": "IND", "nickname": "Pacers"},
+    {"id": 1610612746, "full_name": "LA Clippers", "abbreviation": "LAC", "nickname": "Clippers"},
+    {"id": 1610612747, "full_name": "Los Angeles Lakers", "abbreviation": "LAL", "nickname": "Lakers"},
+    {"id": 1610612748, "full_name": "Miami Heat", "abbreviation": "MIA", "nickname": "Heat"},
+    {"id": 1610612749, "full_name": "Milwaukee Bucks", "abbreviation": "MIL", "nickname": "Bucks"},
+    {"id": 1610612750, "full_name": "Minnesota Timberwolves", "abbreviation": "MIN", "nickname": "Timberwolves"},
+    {"id": 1610612740, "full_name": "New Orleans Pelicans", "abbreviation": "NOP", "nickname": "Pelicans"},
+    {"id": 1610612752, "full_name": "New York Knicks", "abbreviation": "NYK", "nickname": "Knicks"},
+    {"id": 1610612760, "full_name": "Oklahoma City Thunder", "abbreviation": "OKC", "nickname": "Thunder"},
+    {"id": 1610612753, "full_name": "Orlando Magic", "abbreviation": "ORL", "nickname": "Magic"},
+    {"id": 1610612755, "full_name": "Philadelphia 76ers", "abbreviation": "PHI", "nickname": "76ers"},
+    {"id": 1610612756, "full_name": "Phoenix Suns", "abbreviation": "PHX", "nickname": "Suns"},
+    {"id": 1610612757, "full_name": "Portland Trail Blazers", "abbreviation": "POR", "nickname": "Trail Blazers"},
+    {"id": 1610612758, "full_name": "Sacramento Kings", "abbreviation": "SAC", "nickname": "Kings"},
+    {"id": 1610612759, "full_name": "San Antonio Spurs", "abbreviation": "SAS", "nickname": "Spurs"},
+    {"id": 1610612761, "full_name": "Toronto Raptors", "abbreviation": "TOR", "nickname": "Raptors"},
+    {"id": 1610612762, "full_name": "Utah Jazz", "abbreviation": "UTA", "nickname": "Jazz"},
+    {"id": 1610612764, "full_name": "Washington Wizards", "abbreviation": "WAS", "nickname": "Wizards"},
+    {"id": 1610612763, "full_name": "Memphis Grizzlies", "abbreviation": "MEM", "nickname": "Grizzlies"},
+]
+
 
 def list_teams_sorted():
-    nba_teams = teams.get_teams()
-    nba_teams = sorted(nba_teams, key=lambda x: x["full_name"])  # type: ignore
-    return nba_teams
+    """Return list of teams sorted by full_name.
+
+    Falls back to a bundled static list when nba_api is unavailable or when
+    FORCE_OFFLINE_TEAMS=1 is set (useful for restricted network environments).
+    """
+    force_offline = os.getenv("FORCE_OFFLINE_TEAMS", "0") == "1"
+    if not force_offline:
+        try:
+            nba_teams = teams.get_teams()
+            if nba_teams:
+                return sorted(nba_teams, key=lambda x: x["full_name"])  # type: ignore
+        except Exception as e:
+            logger.warning("teams.get_teams failed, using fallback list: %s", e)
+    # Fallback path
+    return sorted(TEAMS_FALLBACK, key=lambda x: x["full_name"])  # type: ignore
 
 
 def find_team_context(choice_index: int) -> TeamContext:

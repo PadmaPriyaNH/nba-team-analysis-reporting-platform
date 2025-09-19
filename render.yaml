@@ -10,6 +10,8 @@ services:
         generateValue: true
       - key: LOG_LEVEL
         value: INFO
+      - key: FORCE_OFFLINE_TEAMS
+        value: "1"
       - key: NBA_API_TIMEOUT
         value: "90"
       - key: NBA_API_RETRIES
