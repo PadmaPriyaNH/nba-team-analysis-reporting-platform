@@ -14,18 +14,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml /app/
 COPY src /app/src
 COPY requirements.txt /app/requirements.txt
-# Bundle seed data (CSV caches) into the image; safe now that data/ exists in repo
-COPY data /app/data_seed
+# Optional seed data: not bundled in image to avoid build failures when data/ absent
 
 # Install deps
 RUN pip install --no-cache-dir -r /app/requirements.txt && \
     pip install --no-cache-dir -e /app
 
-# Runtime dirs
-RUN mkdir -p /app/data /app/plots /app/reports
+# Runtime dirs (ensure seed dir exists even if no data is bundled)
+RUN mkdir -p /app/data /app/plots /app/reports /app/data_seed
 
 ENV PYTHONUNBUFFERED=1
 ENV PORT=8000
+ENV PYTHONPATH=/app/src:${PYTHONPATH}
 
 # Start the web app with Gunicorn (Render ignores Procfile for Docker services)
 EXPOSE 8000
